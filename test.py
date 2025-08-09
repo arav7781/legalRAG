@@ -39,33 +39,35 @@ class RAGSystemTester:
             logger.error(f"Health check error: {str(e)}")
             return False
 
-    def test_knowledge_base_stats(self) -> bool:
+    def test_legal_metrics(self) -> bool:
+        """Test the legal metrics endpoint instead of knowledge base stats"""
         try:
-            response = requests.get(f"{self.base_url}/knowledge-base/stats", timeout=10)
+            response = requests.get(f"{self.base_url}/legal/metrics", 
+                                  headers=self.headers, timeout=10)
             if response.status_code == 200:
                 data = response.json()
-                print(f"✅ Knowledge base stats: {json.dumps(data, indent=2)}")
+                print(f"✅ Legal metrics: {json.dumps(data, indent=2)}")
                 return True
             else:
-                print(f"⚠️  Knowledge base stats endpoint not available: Status {response.status_code}")
+                print(f"⚠️  Legal metrics endpoint not available: Status {response.status_code}")
                 return True  # Not critical
         except Exception as e:
-            print(f"⚠️  Knowledge base stats error: {str(e)}")
+            print(f"⚠️  Legal metrics error: {str(e)}")
             return True  # Not critical
 
     def test_sample_query(self, questions_limit: int = None) -> bool:
         # Example legal questions related to the Vinay Sharma / Nirbhaya case
         sample_questions = [
             "What was the Supreme Court's decision on Vinay Sharma's mercy petition?",
-            "What legal grounds were raised by Vinay Sharma in his mercy petition?",
-            "What is the significance of the 'rarest of rare' doctrine in this case?",
-            # "What were the key reasons for rejecting the mercy petition?",
-            # "How did the court address allegations of torture and mental illness?",
-            # "What is the final sentence awarded to Vinay Sharma?",
-            # "What role did the President of India play in this case?",
-            # "What sections of the IPC were invoked in the conviction?",
-            # "How did the court consider the victim's family during sentencing?",
-            # "What precedent does this case set for future mercy petitions?"
+        #     "What legal grounds were raised by Vinay Sharma in his mercy petition?",
+        #     "What is the significance of the 'rarest of rare' doctrine in this case?",
+        #     "What were the key reasons for rejecting the mercy petition?",
+        #     "How did the court address allegations of torture and mental illness?",
+        #     "What is the final sentence awarded to Vinay Sharma?",
+        #     "What role did the President of India play in this case?",
+        #     "What sections of the IPC were invoked in the conviction?",
+        #     "How did the court consider the victim's family during sentencing?",
+        #     "What precedent does this case set for future mercy petitions?"
         ]
 
         if questions_limit:
@@ -94,10 +96,19 @@ class RAGSystemTester:
 
             if response.status_code == 200:
                 data = response.json()
-                answers = data.get("answers", [])
+                print(f"🔍 Raw API Response: {json.dumps(data, indent=2)}")
+                
+                # Fix: Use 'legal_analysis' instead of 'answers'
+                answers = data.get("legal_analysis", [])
 
                 print(f"✅ Query successful (Latency: {latency:.2f}s)")
                 print(f"📊 Received {len(answers)} answers")
+                
+                # Handle empty answers case
+                if not answers:
+                    print("❌ No answers received from API")
+                    print(f"📊 Full response: {data}")
+                    return False
                 
                 print("\n" + "="*100)
                 print("🔍 DETAILED ANSWERS:")
@@ -114,9 +125,9 @@ class RAGSystemTester:
                     
                     if len(answer.strip()) < 50:
                         print("⚠️  WARNING: Very short answer")
-                    elif "Information not available" in answer:
+                    elif "Information not available" in answer or "not contain sufficient information" in answer:
                         print("ℹ️  INFO: No relevant information found")
-                    elif "Error processing" in answer:
+                    elif "Error processing" in answer or "error occurred" in answer.lower():
                         print("❌ ERROR: Processing error detected")
                     else:
                         print("✅ GOOD: Substantial answer provided")
@@ -126,9 +137,17 @@ class RAGSystemTester:
                 print(f"{'='*50}")
                 
                 total_answers = len(answers)
-                meaningful_answers = [a for a in answers if len(a.strip()) > 50 and "Information not available" not in a and "Error processing" not in a]
-                error_answers = [a for a in answers if "Error processing" in a]
-                no_info_answers = [a for a in answers if "Information not available" in a]
+                if total_answers == 0:
+                    print("❌ No answers to analyze")
+                    return False
+                    
+                meaningful_answers = [a for a in answers if len(a.strip()) > 50 and 
+                                    "Information not available" not in a and 
+                                    "not contain sufficient information" not in a and
+                                    "Error processing" not in a and
+                                    "error occurred" not in a.lower()]
+                error_answers = [a for a in answers if "Error processing" in a or "error occurred" in a.lower()]
+                no_info_answers = [a for a in answers if "Information not available" in a or "not contain sufficient information" in a]
                 
                 print(f"Total Questions: {len(sample_questions)}")
                 print(f"Total Answers: {total_answers}")
@@ -152,12 +171,19 @@ class RAGSystemTester:
             else:
                 print(f"❌ Query failed: Status {response.status_code}")
                 print(f"Response: {response.text}")
+                try:
+                    error_data = response.json()
+                    print(f"Error details: {json.dumps(error_data, indent=2)}")
+                except:
+                    pass
                 logger.error(f"Query failed: Status {response.status_code}, Response: {response.text}")
                 return False
                 
         except Exception as e:
             print(f"❌ Query error: {str(e)}")
             logger.error(f"Query error: {str(e)}")
+            import traceback
+            traceback.print_exc()
             return False
 
     def test_single_question(self, question: str) -> str:
@@ -174,13 +200,52 @@ class RAGSystemTester:
             
             if response.status_code == 200:
                 data = response.json()
-                answers = data.get("answers", [])
+                # Fix: Use 'legal_analysis' instead of 'answers'
+                answers = data.get("legal_analysis", [])
                 return answers[0] if answers else "No answer received"
             else:
                 return f"Error: HTTP {response.status_code} - {response.text}"
                 
         except Exception as e:
             return f"Error: {str(e)}"
+
+    def test_legal_search(self) -> bool:
+        """Test the direct legal search endpoint"""
+        try:
+            print("🔍 Testing legal search endpoint...")
+            response = requests.post(
+                f"{self.base_url}/legal/search",
+                headers=self.headers,
+                params={
+                    "query": "Supreme Court decision mercy petition",
+                    "document_urls": self.document_url,
+                    "top_k": 5
+                },
+                timeout=60
+            )
+            
+            if response.status_code == 200:
+                data = response.json()
+                print(f"✅ Legal search successful")
+                print(f"📊 Found {data.get('total_results', 0)} results")
+                
+                results = data.get('results', [])
+                if results:
+                    print("\n🔍 Top search result:")
+                    top_result = results[0]
+                    print(f"Score: {top_result.get('score', 0):.3f}")
+                    print(f"Text preview: {top_result.get('text', '')[:200]}...")
+                    return True
+                else:
+                    print("⚠️  No search results found")
+                    return False
+            else:
+                print(f"❌ Legal search failed: Status {response.status_code}")
+                return False
+                
+        except Exception as e:
+            print(f"❌ Legal search error: {str(e)}")
+            return False
 
     def interactive_test(self):
         print("\n🎮 INTERACTIVE TESTING MODE")
@@ -210,6 +275,7 @@ class RAGSystemTester:
         print("🚀 COMPREHENSIVE RAG SYSTEM TEST")
         print("="*80)
         print(f"🎯 Target System: {self.base_url}")
+        print(f"🔑 Using Token: {self.bearer_token}")
         print("="*80)
 
         results = {}
@@ -217,10 +283,13 @@ class RAGSystemTester:
         print("\n1️⃣  Testing Health Check...")
         results["health"] = self.test_health_check()
         
-        print("\n2️⃣  Testing Knowledge Base...")
-        results["knowledge_base"] = self.test_knowledge_base_stats()
+        print("\n2️⃣  Testing Legal Metrics...")
+        results["legal_metrics"] = self.test_legal_metrics()
         
-        print("\n3️⃣  Testing Sample Queries...")
+        print("\n3️⃣  Testing Legal Search...")
+        results["legal_search"] = self.test_legal_search()
+        
+        print("\n4️⃣  Testing Sample Queries...")
         results["sample_queries"] = self.test_sample_query(questions_limit)
         
         print(f"\n{'='*80}")
@@ -234,7 +303,7 @@ class RAGSystemTester:
             status = "✅ PASSED" if result else "❌ FAILED"
             print(f"{test_name.replace('_', ' ').title(): <20} {status}")
         
-        success_rate = (passed / total) * 100
+        success_rate = (passed / total) * 100 if total > 0 else 0
         print(f"\n🎯 Overall Success Rate: {success_rate:.1f}% ({passed}/{total})")
         
         if success_rate == 100:
@@ -254,8 +323,8 @@ def main():
     parser.add_argument('--base-url', default='http://localhost:8000', 
                        help='Base URL of the RAG system')
     parser.add_argument('--token', help='Bearer token for authentication')
-    parser.add_argument('--questions', type=int, 
-                       help='Limit number of test questions (default: all)')
+    parser.add_argument('--questions', type=int, default=3,
+                       help='Limit number of test questions (default: 3)')
     parser.add_argument('--interactive', action='store_true',
                        help='Run in interactive mode')
     

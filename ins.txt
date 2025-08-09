@@ -1,1 +1,2 @@
 docker run -p 6333:6333 -p 6334:6334 -v "${PWD}\qdrant_storage:/qdrant/storage" qdrant/qdrant
+https://api.sci.gov.in/supremecourt/2020/5529/5529_2020_5_301_20686_Judgement_14-Feb-2020.pdf?utm_source=chatgpt.

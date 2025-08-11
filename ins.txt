@@ -1,2 +1,24 @@
 docker run -p 6333:6333 -p 6334:6334 -v "${PWD}\qdrant_storage:/qdrant/storage" qdrant/qdrant
-https://api.sci.gov.in/supremecourt/2020/5529/5529_2020_5_301_20686_Judgement_14-Feb-2020.pdf?utm_source=chatgpt.
+https://api.sci.gov.in/supremecourt/2020/5529/5529_2020_5_301_20686_Judgement_14-Feb-2020.pdf
+
+https://api.sci.gov.in/supremecourt/2019/3513/3513_2019_11_1501_59090_Judgement_04-Feb-2025.pdf
+
+What offence was involved in Criminal Appeal No. 3513 of 2019?
+
+What was the Supreme Court’s decision in Karan Soni v. Gaurav Goel?
+
+Why did the Court allow the appeal and what was the effect?
+
+What legal remedy did the respondent receive under Section 138 NI Act?
+
+How did the Court describe the settlement or compromise in its order?
+
+What does "leave granted" signify in this context?
+
+Does the judgment include reasons or speak to principles of NI Act?
+
+What procedural step followed the compromise in the order?
+
+What does setting aside the conviction imply legally?
+
+How might this judgment influence handling of Section 138 cases via settlement?
